@@ -8,15 +8,20 @@ if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
   exit 0
 fi
 
-SUBJECT="$(head -n 1 "$COMMIT_MSG_FILE")"
+SUBJECT="$(grep -v '^#' "$COMMIT_MSG_FILE" | sed '/^[[:space:]]*$/d' | head -n 1 | tr -d '\r')"
 
-PATTERN='^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([a-z0-9\-\.]+\))?!?: .+( refs #[0-9]+(, #[0-9]+)*)?$'
+if [ -z "$SUBJECT" ]; then
+  echo "Mensagem de commit vazia." >&2
+  exit 1
+fi
+
+PATTERN='^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)[[:space:]]*(\([^)]+\))?[[:space:]]*!?:[[:space:]]*.+'
 
 if ! echo "$SUBJECT" | grep -Eq "$PATTERN"; then
   cat >&2 <<EOF
 Mensagem de commit inválida: "$SUBJECT"
 
-Formato (git flow / conventional commits):
+Formato (conventional commits):
   type(scope): descrição [refs #123]
 
 Types: feat, fix, chore, docs, style, refactor, perf, test, build, ci, revert
