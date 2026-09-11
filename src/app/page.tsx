@@ -32,7 +32,7 @@ export default function Home() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Learningaaa
+              Learningaaaaaa
             </a>{' '}
             center.
           </p>

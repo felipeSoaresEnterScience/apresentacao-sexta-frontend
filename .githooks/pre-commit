@@ -2,5 +2,20 @@
 
 set -euo pipefail
 
+cd "$(git rev-parse --show-toplevel)"
+
+NODE=""
+for candidate in /usr/bin/node /usr/local/bin/node "${HOME}/.nvm/versions/node/"*/bin/node; do
+  if [ -x "$candidate" ]; then
+    NODE="$candidate"
+    break
+  fi
+done
+
+if [ -z "$NODE" ]; then
+  echo "pre-commit: node não encontrado" >&2
+  exit 1
+fi
+
 echo "pre-commit: rodando lint (biome check)..." >&2
-bun run lint
+"$NODE" ./node_modules/@biomejs/biome/bin/biome check .
