@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+
+if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+  exit 0
+fi
+
+SUBJECT="$(head -n 1 "$COMMIT_MSG_FILE")"
+
+PATTERN='^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([a-z0-9\-\.]+\))?!?: .+( refs #[0-9]+(, #[0-9]+)*)?$'
+
+if ! echo "$SUBJECT" | grep -Eq "$PATTERN"; then
+  cat >&2 <<EOF
+Mensagem de commit inválida: "$SUBJECT"
+
+Formato (git flow / conventional commits):
+  type(scope): descrição [refs #123]
+
+Types: feat, fix, chore, docs, style, refactor, perf, test, build, ci, revert
+Scope: opcional, ex: feat(auth): adiciona login
+Refs: opcional, ex: fix: corrige bug refs #42
+EOF
+  exit 1
+fi

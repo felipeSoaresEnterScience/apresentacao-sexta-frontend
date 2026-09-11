@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+echo "pre-push: rodando build (next build)..." >&2
+bun run build
+
+REMOTE_NAME="$1"
+REMOTE_URL="$2"
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$BRANCH" = "HEAD" ]; then
+  echo "pre-push: HEAD desanexado, pulando verificação da branch pai" >&2
+  exit 0
+fi
+
+case "$BRANCH" in
+  main) exit 0 ;;
+  develop) PARENT="main" ;;
+  feature/*|bugfix/*|chore/*) PARENT="develop" ;;
+  release/*|hotfix/*) PARENT="main" ;;
+  *)
+    echo "pre-push: branch '$BRANCH' não segue o git flow, pulando verificação da branch pai" >&2
+    exit 0
+    ;;
+esac
+
+echo "pre-push: verificando se '$BRANCH' está atualizada com '$REMOTE_NAME/$PARENT'..." >&2
+
+if ! git fetch "$REMOTE_NAME" "$PARENT" --quiet 2>/dev/null; then
+  if [ -z "$(git ls-remote --heads "$REMOTE_NAME" "refs/heads/$PARENT")" ]; then
+    echo "pre-push: branch '$PARENT' não existe em '$REMOTE_NAME', nada a verificar" >&2
+    exit 0
+  fi
+  echo "pre-push: não foi possível buscar '$PARENT' de '$REMOTE_NAME', não é possível verificar se a branch está atualizada" >&2
+  exit 1
+fi
+
+if ! git merge-base --is-ancestor "$REMOTE_NAME/$PARENT" "$BRANCH"; then
+  cat >&2 <<EOF
+pre-push: BLOQUEADO — '$BRANCH' está atrás de '$REMOTE_NAME/$PARENT'.
+
+Sua branch não contém todos os commits da branch pai.
+Atualize-a antes de fazer push:
+
+  git fetch $REMOTE_NAME
+  git merge $REMOTE_NAME/$PARENT   # ou: git rebase $REMOTE_NAME/$PARENT
+
+Depois faça o push novamente.
+EOF
+  exit 1
+fi
+
+echo "pre-push: '$BRANCH' está atualizada com '$REMOTE_NAME/$PARENT'" >&2
+exit 0
