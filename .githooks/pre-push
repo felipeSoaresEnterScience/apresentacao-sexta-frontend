@@ -4,6 +4,9 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+# shellcheck source=./bun.sh
+source "$(cd "$(dirname "$0")" && pwd)/bun.sh"
+
 REMOTE_NAME="$1"
 ZERO_SHA="0000000000000000000000000000000000000000"
 NEED_BUILD=0
@@ -19,58 +22,9 @@ function git_flow_parent() {
   esac
 }
 
-function find_bun() {
-  if command -v bun >/dev/null 2>&1; then
-    command -v bun
-    return 0
-  fi
-  if [ -x "${HOME}/.bun/bin/bun" ]; then
-    printf "%s\n" "${HOME}/.bun/bin/bun"
-    return 0
-  fi
-  return 1
-}
-
-function find_node() {
-  if command -v node >/dev/null 2>&1; then
-    command -v node
-    return 0
-  fi
-
-  local candidate
-  for candidate in /usr/bin/node /usr/local/bin/node "${HOME}/.volta/bin/node" "${HOME}/.local/share/fnm/aliases/default/bin/node"; do
-    if [ -x "$candidate" ]; then
-      printf "%s\n" "$candidate"
-      return 0
-    fi
-  done
-
-  local nvm_node
-  nvm_node="$(ls -1d "${HOME}/.nvm/versions/node/"*/bin/node 2>/dev/null | sort -V | tail -n 1 || true)"
-  if [ -n "$nvm_node" ] && [ -x "$nvm_node" ]; then
-    printf "%s\n" "$nvm_node"
-    return 0
-  fi
-
-  return 1
-}
-
 function run_build() {
-  echo "pre-push: rodando build (next build)..." >&2
-
-  local bun_bin
-  if bun_bin="$(find_bun)"; then
-    "$bun_bin" run build
-    return 0
-  fi
-
-  local node_bin
-  if ! node_bin="$(find_node)"; then
-    echo "pre-push: bun/node não encontrado" >&2
-    exit 1
-  fi
-
-  "$node_bin" ./node_modules/next/dist/bin/next build
+  echo "pre-push: rodando build (bun run build)..." >&2
+  run_bun run build
 }
 
 function ensure_up_to_date() {
